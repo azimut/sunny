@@ -249,7 +249,7 @@ func main() {
 			return
 		}
 		if len(contains) == 0 {
-			fmt.Println(iptemp)
+			fmt.Printf("%s,,\n", iptemp)
 		} else {
 			for _, network := range contains {
 				connected := network.Network()

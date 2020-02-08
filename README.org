@@ -1,9 +1,14 @@
 * Sunny
-Takes ips from stdin and filters out the ips from a cloud provider. The idea is ONLY drop those shared with other users and are not worth full TCP port scanning or UDP scanning. While there might still be ranges in there worth scanning like EC2 instances.
+Takes ips from stdin and add appends cloudproviders information if belongs to them otherwise adds whois info (TODO).
 ** Usage
 **NOTE** I am a Go copypaster I don't know what I am doing.
 ```
 $ cat ips.txt | sunny
+13.112.218.43,13.112.0.0/14,EC2
+13.113.141.101,13.112.0.0/14,EC2
+13.224.244.108,13.224.0.0/14,CLOUDFRONT
+13.224.244.63,13.224.0.0/14,CLOUDFRONT
+13.224.244.67,13.224.0.0/14,CLOUDFRONT
 ```
 ** IP Sources
 - https://docs.microsoft.com/en-us/azure/virtual-network/public-ip-address-prefix
