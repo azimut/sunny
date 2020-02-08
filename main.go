@@ -92,7 +92,7 @@ func rangeAws() {
 		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
 }
-func rangeFlare(url string) {
+func rangeRawHttp(url string, provider string) {
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -101,7 +101,7 @@ func rangeFlare(url string) {
 	scanner := bufio.NewScanner(res.Body)
 	for scanner.Scan() {
 		ipcidr := scanner.Text()
-		reverseMap[ipcidr] = "Cloudflare"
+		reverseMap[ipcidr] = provider
 		_, network, _ := net.ParseCIDR(ipcidr)
 		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
@@ -211,7 +211,6 @@ func rangeMicrosoft(url string) {
 		}
 	}
 }
-
 func main() {
 	reverseMap = make(map[string]string)
 	info, err := os.Stdin.Stat()
@@ -237,8 +236,9 @@ func main() {
 	//
 	awsRanges = loadAWSRanges()
 	rangeAws()
-	rangeFlare("https://www.cloudflare.com/ips-v6")
-	rangeFlare("https://www.cloudflare.com/ips-v4")
+	rangeRawHttp("https://www.cloudflare.com/ips-v6", "Cloudflare")
+	rangeRawHttp("https://www.cloudflare.com/ips-v4", "Cloudflare")
+	rangeRawHttp("https://raw.githubusercontent.com/SecOps-Institute/Akamai-ASN-and-IPs-List/master/akamai_ip_cidr_blocks.lst", "Akamai")
 	rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519")
 	rangeGoogle()
 	//
