@@ -32,6 +32,8 @@ var awsRanges *AWSRanges
 var ipV4AWSRangesIPNets []*net.IPNet
 var ipV6AWSRangesIPNets []*net.IPNet
 
+var reverseMap map[string]string
+
 func loadAWSRanges() *AWSRanges {
 	file, err := ioutil.ReadFile("/home/sendai/ip-ranges.json")
 	if err != nil {
@@ -47,20 +49,19 @@ func loadAWSRanges() *AWSRanges {
 
 func rangeAws(ranger cidranger.Ranger) {
 	for _, prefix := range awsRanges.Prefixes {
-		if prefix.Service == "CLOUDFRONT" {
-			_, network, _ := net.ParseCIDR(prefix.IPPrefix)
-			ranger.Insert(cidranger.NewBasicRangerEntry(*network))
-		}
+		reverseMap[prefix.IPPrefix] = prefix.Service
+		_, network, _ := net.ParseCIDR(prefix.IPPrefix)
+		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
 	for _, prefix := range awsRanges.IPv6Prefixes {
-		if prefix.Service == "CLOUDFRONT" {
-			_, network, _ := net.ParseCIDR(prefix.IPPrefix)
-			ranger.Insert(cidranger.NewBasicRangerEntry(*network))
-		}
+		reverseMap[prefix.IPPrefix] = prefix.Service
+		_, network, _ := net.ParseCIDR(prefix.IPPrefix)
+		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
 }
 
 func main() {
+	reverseMap = make(map[string]string)
 	info, err := os.Stdin.Stat()
 	if err != nil {
 		panic(err)
@@ -68,7 +69,7 @@ func main() {
 
 	if info.Mode()&os.ModeCharDevice != 0 || info.Size() <= 0 {
 		fmt.Println("The command is intended to run ONLY through pipes")
-		fmt.Println("Usage: cat ips.txt | sunny")
+		fmt.Println("Usage: sunny < ips.txt")
 		return
 	}
 
@@ -92,8 +93,18 @@ func main() {
 			fmt.Println("err")
 			return
 		}
+
 		if len(contains) == 0 {
 			fmt.Println(iptemp)
+		} else {
+			for _, network := range contains {
+				connected := network.Network()
+				fmt.Printf("%s,%s,%s\n",
+					iptemp,
+					connected.String(),
+					reverseMap[connected.String()])
+				break
+			}
 		}
 	}
 }

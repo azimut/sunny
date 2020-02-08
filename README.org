@@ -1,5 +1,5 @@
 * Sunny
-Takes ips from stdin and filters out the ips from a cloud provider. The idea is ONLY drop those shared with other users and are not worth full TCP port scanning or UDP scanning.
+Takes ips from stdin and filters out the ips from a cloud provider. The idea is ONLY drop those shared with other users and are not worth full TCP port scanning or UDP scanning. While there might still be ranges in there worth scanning like EC2 instances.
 ** Usage
 **NOTE** I am a Go copypaster I don't know what I am doing.
 ** IP Sources
@@ -8,6 +8,7 @@ Takes ips from stdin and filters out the ips from a cloud provider. The idea is 
 - https://docs.aws.amazon.com/general/latest/gr/aws-ip-ranges.html
 - https://cloud.google.com/compute/docs/faq#find_ip_range
 ** Related projects
+- https://github.com/99designs/clouddetect
 - https://github.com/mirusresearch/ipCloudy
 - https://cloud.google.com/compute/docs/faq#find_ip_range
 - https://github.com/vktg/cloudlists
