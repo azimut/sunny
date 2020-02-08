@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/yl2chen/cidranger"
+	"golang.org/x/net/html"
 )
 
 type AWSRanges struct {
@@ -30,6 +31,26 @@ type IPv6Prefix struct {
 	Service  string `json:"service"`
 }
 
+type AzureMain struct {
+	ChangeNumber int          `json:"changeNumber"`
+	Cloud        string       `json:"cloud"`
+	Values       []AzureValue `json:"values"`
+}
+
+type AzureValue struct {
+	Name       string          `json:"name"`
+	Id         string          `json:"id"`
+	Properties AzureProperties `json:"properties"`
+}
+
+type AzureProperties struct {
+	ChangeNumber    int      `json:"changeNumber"`
+	Region          string   `json:"region"`
+	Platform        string   `json:"platform"`
+	SystemService   string   `json:"systemService"`
+	AddressPrefixes []string `json:"addressPrefixes"`
+}
+
 var awsRanges *AWSRanges
 var ipV4AWSRangesIPNets []*net.IPNet
 var ipV6AWSRangesIPNets []*net.IPNet
@@ -38,12 +59,21 @@ var reverseMap map[string]string
 var ranger = cidranger.NewPCTrieRanger()
 
 func loadAWSRanges() *AWSRanges {
-	file, err := ioutil.ReadFile("/home/sendai/ip-ranges.json")
+	url := "https://ip-ranges.amazonaws.com/ip-ranges.json"
+
+	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
 	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	var ranges AWSRanges
-	err = json.Unmarshal(file, &ranges)
+
+	err = json.Unmarshal(body, &ranges)
 	if err != nil {
 		panic(err)
 	}
@@ -112,6 +142,76 @@ func rangeGoogle() {
 	}
 }
 
+var azureJsonFileRegexp = regexp.MustCompile(`.*?ServiceTags.*?json`)
+
+// url: https://www.microsoft.com/en-us/download/confirmation.aspx?id=41653
+func rangeMicrosoft(url string) {
+	res, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	jsonURI := ""
+	doc := html.NewTokenizer(res.Body)
+	for {
+		e := doc.Next()
+		if e == html.StartTagToken {
+			tag := doc.Token()
+			if tag.Data == "a" {
+				for _, a := range tag.Attr {
+					if a.Key == "href" {
+						if azureJsonFileRegexp.Match([]byte(a.Val)) {
+							jsonURI = a.Val
+						}
+						break
+					}
+				}
+			}
+		}
+
+		if jsonURI != "" {
+			break
+		}
+	}
+	// Download Json
+	req, err := http.NewRequest("GET", jsonURI, nil)
+	if err != nil {
+		panic(err)
+	}
+	for _, cookie := range res.Cookies() {
+		req.AddCookie(cookie)
+	}
+
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	var azure AzureMain
+	if err := json.Unmarshal(body, &azure); err != nil {
+		panic(err)
+	}
+
+	for _, val := range azure.Values {
+		prop := val.Properties
+		for _, prefix := range prop.AddressPrefixes {
+			_, net, err := net.ParseCIDR(prefix)
+			if err != nil {
+				panic(err)
+			}
+			reverseMap[prefix] = val.Name
+			ranger.Insert(cidranger.NewBasicRangerEntry(*net))
+		}
+	}
+}
+
 func main() {
 	reverseMap = make(map[string]string)
 	info, err := os.Stdin.Stat()
@@ -119,9 +219,9 @@ func main() {
 		panic(err)
 	}
 
-	if info.Mode()&os.ModeCharDevice != 0 || info.Size() <= 0 {
+	if info.Mode()&os.ModeNamedPipe == 0 {
 		fmt.Println("The command is intended to run ONLY through pipes")
-		fmt.Println("Usage: sunny < ips.txt")
+		fmt.Println("Usage: cat ips.txt | sunny")
 		return
 	}
 
@@ -139,6 +239,7 @@ func main() {
 	rangeAws()
 	rangeFlare("https://www.cloudflare.com/ips-v6")
 	rangeFlare("https://www.cloudflare.com/ips-v4")
+	rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519")
 	rangeGoogle()
 	//
 	for _, iptemp := range output {

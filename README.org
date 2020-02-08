@@ -2,15 +2,21 @@
 Takes ips from stdin and filters out the ips from a cloud provider. The idea is ONLY drop those shared with other users and are not worth full TCP port scanning or UDP scanning. While there might still be ranges in there worth scanning like EC2 instances.
 ** Usage
 **NOTE** I am a Go copypaster I don't know what I am doing.
+```
+$ cat ips.txt | sunny
+```
 ** IP Sources
 - https://docs.microsoft.com/en-us/azure/virtual-network/public-ip-address-prefix
 - https://www.cloudflare.com/ips/
 - https://docs.aws.amazon.com/general/latest/gr/aws-ip-ranges.html
 - https://cloud.google.com/compute/docs/faq#find_ip_range
+- akamai????
 ** See also
-- https://github.com/99designs/clouddetect
-- https://github.com/mirusresearch/ipCloudy
-- https://cloud.google.com/compute/docs/faq#find_ip_range
-- https://github.com/vktg/cloudlists
+- https://github.com/client9/ipcat - uses XML for azure, no service type information available, also page says it's deprecated
+- https://github.com/99designs/clouddetect - uses XML for azure
+- https://github.com/mirusresearch/ipCloudy - uses XML for azure, fallback to whois
+- https://github.com/vktg/cloudlists - lists with "less popular" cloud services
 - https://github.com/hdm/2017-BSidesLV-Modern-Recon/
 - https://www.youtube.com/watch?v=7KIk2uA7_Cw
+** TODO
+stop panicking...?
