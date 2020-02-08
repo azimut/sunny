@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/yl2chen/cidranger"
 )
@@ -33,6 +35,7 @@ var ipV4AWSRangesIPNets []*net.IPNet
 var ipV6AWSRangesIPNets []*net.IPNet
 
 var reverseMap map[string]string
+var ranger = cidranger.NewPCTrieRanger()
 
 func loadAWSRanges() *AWSRanges {
 	file, err := ioutil.ReadFile("/home/sendai/ip-ranges.json")
@@ -47,7 +50,7 @@ func loadAWSRanges() *AWSRanges {
 	return &ranges
 }
 
-func rangeAws(ranger cidranger.Ranger) {
+func rangeAws() {
 	for _, prefix := range awsRanges.Prefixes {
 		reverseMap[prefix.IPPrefix] = prefix.Service
 		_, network, _ := net.ParseCIDR(prefix.IPPrefix)
@@ -57,6 +60,55 @@ func rangeAws(ranger cidranger.Ranger) {
 		reverseMap[prefix.IPPrefix] = prefix.Service
 		_, network, _ := net.ParseCIDR(prefix.IPPrefix)
 		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
+	}
+}
+func rangeFlare(url string) {
+	res, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+	scanner := bufio.NewScanner(res.Body)
+	for scanner.Scan() {
+		ipcidr := scanner.Text()
+		reverseMap[ipcidr] = "Cloudflare"
+		_, network, _ := net.ParseCIDR(ipcidr)
+		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
+	}
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+}
+
+var domainRegexp = regexp.MustCompile(`include:([^\s]+)`)
+var ipRegexp = regexp.MustCompile(`ip\d:([^\s]+)`)
+
+func rangeGoogle() {
+	r, err := net.LookupTXT("_cloud-netblocks.googleusercontent.com")
+	if err != nil {
+		panic(err)
+	}
+	for _, e := range r {
+		matches := domainRegexp.FindAllStringSubmatch(e, -1)
+		for _, subMatches := range matches {
+			r, err := net.LookupTXT(subMatches[1])
+			if err != nil {
+				panic(err)
+			}
+			for _, e := range r {
+				ipMatches := ipRegexp.FindAllStringSubmatch(e, -1)
+
+				for _, ipSubMatches := range ipMatches {
+					_, net, err := net.ParseCIDR(ipSubMatches[1])
+					if err != nil {
+						panic(err)
+					}
+					reverseMap[ipSubMatches[1]] = "Google"
+					ranger.Insert(cidranger.NewBasicRangerEntry(*net))
+				}
+			}
+
+		}
 	}
 }
 
@@ -84,8 +136,10 @@ func main() {
 	}
 	//
 	awsRanges = loadAWSRanges()
-	ranger := cidranger.NewPCTrieRanger()
-	rangeAws(ranger)
+	rangeAws()
+	rangeFlare("https://www.cloudflare.com/ips-v6")
+	rangeFlare("https://www.cloudflare.com/ips-v4")
+	rangeGoogle()
 	//
 	for _, iptemp := range output {
 		contains, err := ranger.ContainingNetworks(net.ParseIP(iptemp))
@@ -93,7 +147,6 @@ func main() {
 			fmt.Println("err")
 			return
 		}
-
 		if len(contains) == 0 {
 			fmt.Println(iptemp)
 		} else {

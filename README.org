@@ -7,8 +7,10 @@ Takes ips from stdin and filters out the ips from a cloud provider. The idea is 
 - https://www.cloudflare.com/ips/
 - https://docs.aws.amazon.com/general/latest/gr/aws-ip-ranges.html
 - https://cloud.google.com/compute/docs/faq#find_ip_range
-** Related projects
+** See also
 - https://github.com/99designs/clouddetect
 - https://github.com/mirusresearch/ipCloudy
 - https://cloud.google.com/compute/docs/faq#find_ip_range
 - https://github.com/vktg/cloudlists
+- https://github.com/hdm/2017-BSidesLV-Modern-Recon/
+- https://www.youtube.com/watch?v=7KIk2uA7_Cw
