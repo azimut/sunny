@@ -211,6 +211,20 @@ func rangeMicrosoft(url string) {
 		}
 	}
 }
+
+// https://en.wikipedia.org/wiki/Reserved_IP_addresses
+func rangeLocal() {
+	inets := []string{"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24", "192.88.99.0/24", "192.168.0.0/16", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4", "255.255.255.255/32"}
+	for _, cidr := range inets {
+		_, net, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(err)
+		}
+		reverseMap[cidr] = "LOCAL"
+		ranger.Insert(cidranger.NewBasicRangerEntry(*net))
+	}
+}
+
 func main() {
 	reverseMap = make(map[string]string)
 	info, err := os.Stdin.Stat()
@@ -240,6 +254,7 @@ func main() {
 	rangeRawHttp("https://www.cloudflare.com/ips-v4", "Cloudflare")
 	rangeRawHttp("https://raw.githubusercontent.com/SecOps-Institute/Akamai-ASN-and-IPs-List/master/akamai_ip_cidr_blocks.lst", "Akamai")
 	rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519")
+	rangeLocal()
 	rangeGoogle()
 	//
 	for _, iptemp := range output {
