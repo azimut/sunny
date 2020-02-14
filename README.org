@@ -1,5 +1,5 @@
 * Sunny
-Takes ips from stdin and appends cloudproviders information if belongs to them, otherwise adds whois info (TODO).
+Takes ips from stdin and appends cloudproviders information if belongs to them, otherwise adds whois info (TODO). While you can get information about an IP owner through WHOIS or dns PTR records only you won't be able to get the specific service of the cloud provider is being used. This should do all.
 ** Usage
 **NOTE** I am a Go copypaster I don't know what I am doing.
 #+begin_src

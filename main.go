@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 
 	"github.com/yl2chen/cidranger"
 	"golang.org/x/net/html"
@@ -80,19 +81,24 @@ func loadAWSRanges() *AWSRanges {
 	return &ranges
 }
 
-func rangeAws() {
+func rangeAws(mutex *sync.Mutex, wg *sync.WaitGroup) {
 	for _, prefix := range awsRanges.Prefixes {
+		mutex.Lock()
 		reverseMap[prefix.IPPrefix] = prefix.Service
+		mutex.Unlock()
 		_, network, _ := net.ParseCIDR(prefix.IPPrefix)
 		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
 	for _, prefix := range awsRanges.IPv6Prefixes {
+		mutex.Lock()
 		reverseMap[prefix.IPPrefix] = prefix.Service
+		mutex.Unlock()
 		_, network, _ := net.ParseCIDR(prefix.IPPrefix)
 		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
+	wg.Done()
 }
-func rangeRawHttp(url string, provider string) {
+func rangeRawHttp(url string, provider string, mutex *sync.Mutex, wg *sync.WaitGroup) {
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -101,19 +107,22 @@ func rangeRawHttp(url string, provider string) {
 	scanner := bufio.NewScanner(res.Body)
 	for scanner.Scan() {
 		ipcidr := scanner.Text()
+		mutex.Lock()
 		reverseMap[ipcidr] = provider
+		mutex.Unlock()
 		_, network, _ := net.ParseCIDR(ipcidr)
 		ranger.Insert(cidranger.NewBasicRangerEntry(*network))
 	}
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
+	wg.Done()
 }
 
 var domainRegexp = regexp.MustCompile(`include:([^\s]+)`)
 var ipRegexp = regexp.MustCompile(`ip\d:([^\s]+)`)
 
-func rangeGoogle() {
+func rangeGoogle(mutex *sync.Mutex, wg *sync.WaitGroup) {
 	r, err := net.LookupTXT("_cloud-netblocks.googleusercontent.com")
 	if err != nil {
 		panic(err)
@@ -133,19 +142,22 @@ func rangeGoogle() {
 					if err != nil {
 						panic(err)
 					}
+					mutex.Lock()
 					reverseMap[ipSubMatches[1]] = "Google"
+					mutex.Unlock()
 					ranger.Insert(cidranger.NewBasicRangerEntry(*net))
 				}
 			}
 
 		}
 	}
+	wg.Done()
 }
 
 var azureJsonFileRegexp = regexp.MustCompile(`.*?ServiceTags.*?json`)
 
 // url: https://www.microsoft.com/en-us/download/confirmation.aspx?id=41653
-func rangeMicrosoft(url string) {
+func rangeMicrosoft(url string, mutex *sync.Mutex, wg *sync.WaitGroup) {
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -206,26 +218,34 @@ func rangeMicrosoft(url string) {
 			if err != nil {
 				panic(err)
 			}
+			mutex.Lock()
 			reverseMap[prefix] = val.Name
+			mutex.Unlock()
 			ranger.Insert(cidranger.NewBasicRangerEntry(*net))
 		}
 	}
+	wg.Done()
 }
 
 // https://en.wikipedia.org/wiki/Reserved_IP_addresses
-func rangeLocal() {
+func rangeLocal(mutex *sync.Mutex, wg *sync.WaitGroup) {
 	inets := []string{"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24", "192.88.99.0/24", "192.168.0.0/16", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4", "255.255.255.255/32"}
 	for _, cidr := range inets {
 		_, net, err := net.ParseCIDR(cidr)
 		if err != nil {
 			panic(err)
 		}
+		mutex.Lock()
 		reverseMap[cidr] = "LOCAL"
+		mutex.Unlock()
 		ranger.Insert(cidranger.NewBasicRangerEntry(*net))
 	}
+	wg.Done()
 }
 
 func main() {
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
 	reverseMap = make(map[string]string)
 	info, err := os.Stdin.Stat()
 	if err != nil {
@@ -249,13 +269,15 @@ func main() {
 	}
 	//
 	awsRanges = loadAWSRanges()
-	rangeAws()
-	rangeRawHttp("https://www.cloudflare.com/ips-v6", "Cloudflare")
-	rangeRawHttp("https://www.cloudflare.com/ips-v4", "Cloudflare")
-	rangeRawHttp("https://raw.githubusercontent.com/SecOps-Institute/Akamai-ASN-and-IPs-List/master/akamai_ip_cidr_blocks.lst", "Akamai")
-	rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519")
-	rangeLocal()
-	rangeGoogle()
+	wg.Add(7)
+	go rangeAws(&mutex, &wg)
+	go rangeRawHttp("https://www.cloudflare.com/ips-v6", "Cloudflare", &mutex, &wg)
+	go rangeRawHttp("https://www.cloudflare.com/ips-v4", "Cloudflare", &mutex, &wg)
+	go rangeRawHttp("https://raw.githubusercontent.com/SecOps-Institute/Akamai-ASN-and-IPs-List/master/akamai_ip_cidr_blocks.lst", "Akamai", &mutex, &wg)
+	go rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519", &mutex, &wg)
+	go rangeLocal(&mutex, &wg)
+	go rangeGoogle(&mutex, &wg)
+	wg.Wait()
 	//
 	for _, iptemp := range output {
 		contains, err := ranger.ContainingNetworks(net.ParseIP(iptemp))
