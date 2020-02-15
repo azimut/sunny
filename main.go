@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
 	"sync"
 
+	"github.com/ammario/ipisp"
 	"github.com/yl2chen/cidranger"
 	"golang.org/x/net/html"
 )
@@ -246,6 +248,8 @@ func rangeLocal(mutex *sync.Mutex, wg *sync.WaitGroup) {
 func main() {
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
+	var ips []string
+	var cloudless []net.IP
 	reverseMap = make(map[string]string)
 	info, err := os.Stdin.Stat()
 	if err != nil {
@@ -259,9 +263,8 @@ func main() {
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
-	var output []string
 	for scanner.Scan() {
-		output = append(output, scanner.Text())
+		ips = append(ips, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Println(err)
@@ -279,23 +282,40 @@ func main() {
 	go rangeGoogle(&mutex, &wg)
 	wg.Wait()
 	//
-	for _, iptemp := range output {
-		contains, err := ranger.ContainingNetworks(net.ParseIP(iptemp))
+	for _, ip := range ips {
+		contains, err := ranger.ContainingNetworks(net.ParseIP(ip))
 		if err != nil {
-			fmt.Println("err")
+			fmt.Println("failed while parsing IP into a CIDR")
 			return
 		}
 		if len(contains) == 0 {
-			fmt.Printf("%s,,\n", iptemp)
+			cloudless = append(cloudless, net.ParseIP(ip))
 		} else {
 			for _, network := range contains {
 				connected := network.Network()
-				fmt.Printf("%s,%s,%s\n",
-					iptemp,
+				fmt.Printf("%s,%s,\"%s\"\n",
+					ip,
 					connected.String(),
 					reverseMap[connected.String()])
 				break
 			}
 		}
+	}
+	//
+	client, err := ipisp.NewWhoisClient()
+	if err != nil {
+		panic("failed to create WHOIS client")
+	}
+	defer client.Close()
+	responses, err := client.LookupIPs(cloudless)
+	if err != nil {
+		log.Fatalf("error: %v %v", err)
+		panic("failed to whois the ips")
+	}
+	for _, resp := range responses {
+		fmt.Printf("%s,%s,\"%s\"\n",
+			resp.IP,
+			resp.Range,
+			resp.Name.Long)
 	}
 }
