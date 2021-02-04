@@ -18,6 +18,7 @@ var ranger = cidranger.NewPCTrieRanger()
 func main() {
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
+
 	var ips []string
 	var cloudless []net.IP
 	reverseMap = make(map[string]string)
@@ -33,21 +34,20 @@ func main() {
 		return
 	}
 
+	// Add STDIN to ips (no validation)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		ips = append(ips, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
-	awsRanges = loadAWSRanges()
 	wg.Add(7)
-	go rangeAws(&mutex, &wg)
 	go rangeRawHttp("https://www.cloudflare.com/ips-v6", "Cloudflare", &mutex, &wg)
 	go rangeRawHttp("https://www.cloudflare.com/ips-v4", "Cloudflare", &mutex, &wg)
 	go rangeRawHttp("https://raw.githubusercontent.com/SecOps-Institute/Akamai-ASN-and-IPs-List/master/akamai_ip_cidr_blocks.lst", "Akamai", &mutex, &wg)
+	go rangeAws(&mutex, &wg)
 	go rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519", &mutex, &wg)
 	go rangeGoogle(&mutex, &wg)
 	go rangeLocal(&mutex, &wg)
