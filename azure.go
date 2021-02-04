@@ -35,7 +35,8 @@ type AzureProperties struct {
 var azureJsonFileRegexp = regexp.MustCompile(`.*?ServiceTags.*?json`)
 
 // url: https://www.microsoft.com/en-us/download/confirmation.aspx?id=41653
-func rangeMicrosoft(url string, mutex *sync.Mutex, wg *sync.WaitGroup) {
+func rangeMicrosoft(mutex *sync.Mutex, wg *sync.WaitGroup) {
+	url := "https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519"
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)

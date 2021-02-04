@@ -48,10 +48,11 @@ func main() {
 	go rangeRawHttp("https://www.cloudflare.com/ips-v4", "Cloudflare", &mutex, &wg)
 	go rangeRawHttp("https://raw.githubusercontent.com/SecOps-Institute/Akamai-ASN-and-IPs-List/master/akamai_ip_cidr_blocks.lst", "Akamai", &mutex, &wg)
 	go rangeAws(&mutex, &wg)
-	go rangeMicrosoft("https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519", &mutex, &wg)
+	go rangeMicrosoft(&mutex, &wg)
 	go rangeGoogle(&mutex, &wg)
 	go rangeLocal(&mutex, &wg)
 	wg.Wait()
+
 	//
 	for _, ip := range ips {
 		contains, err := ranger.ContainingNetworks(net.ParseIP(ip))
