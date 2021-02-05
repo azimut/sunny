@@ -27,9 +27,6 @@ type AWSRanges struct {
 	IPv6Prefixes []IPv6Prefix `json:"ipv6_prefixes"`
 }
 
-var ipV4AWSRangesIPNets []*net.IPNet
-var ipV6AWSRangesIPNets []*net.IPNet
-
 func rangeAws(mutex *sync.Mutex, wg *sync.WaitGroup) {
 
 	url := "https://ip-ranges.amazonaws.com/ip-ranges.json"
