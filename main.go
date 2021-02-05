@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"sync"
@@ -81,9 +80,9 @@ func main() {
 	defer client.Close()
 	responses, err := client.LookupIPs(cloudless)
 	if err != nil {
-		log.Fatalf("error: %v %v", err)
-		panic("failed to whois the ips")
+		panic(err)
 	}
+
 	for _, resp := range responses {
 		fmt.Printf("%s,%s,\"%s\"\n",
 			resp.IP,
