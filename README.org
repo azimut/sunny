@@ -1,7 +1,6 @@
 * Sunny
-Takes ips from stdin and appends cloudproviders information if belongs to them, otherwise adds whois info from *cymru*. While you can get information about an IP owner through WHOIS or dns PTR records only you won't be able to get the specific service of the cloud provider is being used. This should do all.
+Gets information about the owner of IP(s). Asking cloud providers public information for details or from WHOIS (through *cymru*).
 ** Usage
-**NOTE** I am a Go copypaster I don't know what I am doing.
 #+begin_src
 $ cat ips.txt | sunny
 13.112.218.43,13.112.0.0/14,EC2
@@ -24,7 +23,3 @@ $ cat ips.txt | sunny
 - https://github.com/vktg/cloudlists - lists with "less popular" cloud services
 - https://github.com/hdm/2017-BSidesLV-Modern-Recon/
 - https://www.youtube.com/watch?v=7KIk2uA7_Cw
-** Uses
- https://github.com/ammario/ipisp/
-** TODO
-stop panicking...?
