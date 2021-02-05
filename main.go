@@ -30,7 +30,7 @@ func main() {
 	if info.Mode()&os.ModeNamedPipe == 0 {
 		fmt.Println("The command is intended to run ONLY through pipes")
 		fmt.Println("Usage: cat ips.txt | sunny")
-		return
+		os.Exit(1)
 	}
 
 	// Add STDIN to ips (no validation)
