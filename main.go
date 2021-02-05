@@ -52,7 +52,7 @@ func main() {
 	go rangeLocal(&mutex, &wg)
 	wg.Wait()
 
-	//
+	// Process INPUT ips with resolved data
 	for _, ip := range ips {
 		contains, err := ranger.ContainingNetworks(net.ParseIP(ip))
 		if err != nil {
@@ -72,17 +72,17 @@ func main() {
 			}
 		}
 	}
-	//
+
+	// Fallback to WHOIS, for cloudless IPs
 	client, err := ipisp.NewWhoisClient()
 	if err != nil {
-		panic("failed to create WHOIS client")
+		panic(err)
 	}
 	defer client.Close()
 	responses, err := client.LookupIPs(cloudless)
 	if err != nil {
 		panic(err)
 	}
-
 	for _, resp := range responses {
 		fmt.Printf("%s,%s,\"%s\"\n",
 			resp.IP,

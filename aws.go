@@ -31,18 +31,16 @@ var ipV4AWSRangesIPNets []*net.IPNet
 var ipV6AWSRangesIPNets []*net.IPNet
 
 func rangeAws(mutex *sync.Mutex, wg *sync.WaitGroup) {
-	url := "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
+	url := "https://ip-ranges.amazonaws.com/ip-ranges.json"
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
 	}
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
 	}
-
 	var awsRanges *AWSRanges
 	err = json.Unmarshal(body, &awsRanges)
 	if err != nil {
